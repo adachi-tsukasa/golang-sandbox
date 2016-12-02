@@ -1,0 +1,13 @@
+application: imasvoicelist
+runtime: go
+api_version: go1
+version: making
+
+
+handlers:
+- url: /static/dist/.*  
+  static_files: \1  
+  upload: /static/dist/.*
+
+- url: /.*
+  script: _go_app

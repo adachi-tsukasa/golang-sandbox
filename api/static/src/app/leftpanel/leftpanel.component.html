@@ -1,0 +1,8 @@
+<p>
+  leftpanel
+</p>
+<ul>
+  <li *ngFor="let character of charsList">
+    <span (click)="selectCharacter(character.id)">{{character.name}}</span>
+  </li>
+</ul>

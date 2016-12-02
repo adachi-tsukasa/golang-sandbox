@@ -1,0 +1,21 @@
+.grid {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto 1fr auto;
+}
+.title {
+    grid-column: 1 / 3;
+    grid-row: 1 / 2;
+}
+.list {
+    padding: 10px;
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+}
+.content {
+    padding: 10px;
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+}
