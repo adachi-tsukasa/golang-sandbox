@@ -4,7 +4,7 @@ import { Component, OnInit, EventEmitter, Output } from '@angular/core';
 import { ListService } from '../list.service';
 import { HttpcommunicationService } from '../httpcommunication.service';
 
-import { Character } from '../character';
+import { Character } from '../model/character';
 
 import { Observable } from 'rxjs/Observable';
 

@@ -1,70 +1,61 @@
 package api
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"strconv"
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	"io/ioutil"
-
-	"encoding/json"
-
-	"strconv"
-
-	"github.com/SlyMarbo/rss"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/render"
 )
+
+type Feed struct {
+	Title       string   `xml:"channel>title"`
+	ItemTitle   []string `xml:"channel>item>title"`
+	Description []string `xml:"channel>item>description"`
+}
+
+type RDFFeed struct {
+	Title       string   `xml:"channel>title"`
+	ItemTitle   []string `xml:"item>title"`
+	Description []string `xml:"item>description"`
+}
 
 type Character struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 }
+type Characters []Character
 
-type Feeder struct {
+type FeedList struct {
 	ID  int    `json:"id"`
 	Url string `json:"url"`
 }
-type Characters []Character
-type Feeders []Feeder
+type FeedLists []FeedList
 
 func init() {
 
 	m := martini.Classic()
 	m.Use(render.Renderer())
-	// m.Get("/", func(r render.Render) {
-	// 	r.Redirect("static/index.html", 302)
-	// })
 	m.Use(martini.Static("static/dist"))
 	m.Get("/charList", func(r render.Render, res http.ResponseWriter, req *http.Request) {
-		// r.JSON(200, map[string]interface{}{"hello": "world"})
 		r.JSON(200, getCharList(res, req))
 	})
-
 	m.Get("/feed/:id", func(params martini.Params, r render.Render, res http.ResponseWriter, req *http.Request) {
 		r.JSON(200, feedParser(params["id"], res, req))
-	})
-
-	// for request test
-	m.Get("/hoge", func(r render.Render, res http.ResponseWriter, req *http.Request) {
-		// c := appengine.NewContext(req)
-		// log.Infof(c, "START")
-		r.JSON(200, testFeedParser(res, req))
-		// r.JSON(200, "hoge")
-
 	})
 
 	http.Handle("/", m)
 }
 
-func redirect(w http.ResponseWriter, r *http.Request) {
-
-}
-
 func getCharList(w http.ResponseWriter, r *http.Request) Characters {
-
 	file := loadJSONFile("./json/charlist.json")
 
 	var chars Characters
@@ -72,8 +63,6 @@ func getCharList(w http.ResponseWriter, r *http.Request) Characters {
 	if jsonErr != nil {
 		fmt.Println("Format Error: ", jsonErr)
 	}
-
-	// fmt.Fprint(w, chars)
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 	w.Header().Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	return chars
@@ -87,44 +76,54 @@ func loadJSONFile(filepath string) []byte {
 	return file
 }
 
-func feedParser(paramID string, w http.ResponseWriter, r *http.Request) rss.Feed {
-	ctx := appengine.NewContext(r)
-	client := urlfetch.Client(ctx)
-
-	var feed rss.Feed
-	var feeders Feeders
+func feedParser(paramID string, w http.ResponseWriter, r *http.Request) []string {
+	var retunableStringArrays []string
+	var feedlists FeedLists
 	file := loadJSONFile("./json/feedlist.json")
-	jsonErr := json.Unmarshal(file, &feeders)
+	jsonErr := json.Unmarshal(file, &feedlists)
 	if jsonErr != nil {
 		fmt.Println("Format Error: ", jsonErr)
 	}
-	for _, feeder := range feeders {
+	for _, feedlist := range feedlists {
 		id, _ := strconv.Atoi(paramID)
-		if feeder.ID == id {
-			rowFeed, err := rss.FetchByClient(feeder.Url, client)
+		if feedlist.ID == id {
+			wh, err := getFeed(feedlist.Url, r)
 			if err != nil {
-				fmt.Println("Parse Error: ", err)
+				log.Fatalf("Log: %v", err)
+				return nil
 			}
-			feed = *rowFeed
-			break
+			// for n, v := range wh.ItemTitle {
+			// 	if n > 0 {
+			// 		fmt.Printf("%s \n", v)
+			// 	}
+			// }
+			retunableStringArrays = wh.ItemTitle
 		}
 	}
+	// wh, err := getFeed("http://rssblog.ameba.jp/eriko-nakamura-blog/rss20.xml", r)
+
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 	w.Header().Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	return feed
+	return retunableStringArrays
 }
 
-// for feed parsing test
-func testFeedParser(w http.ResponseWriter, r *http.Request) []*rss.Item {
-	ctx := appengine.NewContext(r)
-	client := urlfetch.Client(ctx)
+func getFeed(feed string, r *http.Request) (p *Feed, err error) {
 
-	rowFeed, err := rss.FetchByClient("http://blog.livedoor.jp/ubiquitous777/index.rdf", client)
+	c := appengine.NewContext(r)
+	client := urlfetch.Client(c)
+	res, err := client.Get(feed)
+
+	// res, err := http.Get(feed)
 	if err != nil {
-		fmt.Println("Parse Error: ", err)
+		return nil, err
 	}
-	// fmt.Fprint(w, rowFeed.Items)
-	w.Header().Add("Access-Control-Allow-Origin", "*")
-	w.Header().Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	return rowFeed.Items
+
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	wh := new(Feed)
+	err = xml.Unmarshal(b, &wh)
+
+	return wh, err
 }

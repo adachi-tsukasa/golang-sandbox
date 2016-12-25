@@ -9,6 +9,6 @@ export class ListService {
   constructor(private httpservice: HttpcommunicationService) { }
 
   getList(): Observable<Response> {
-    return this.httpservice.get("https://imasvoicelist.appspot.com/charList");
+    return this.httpservice.get("/charList");
   }
 }

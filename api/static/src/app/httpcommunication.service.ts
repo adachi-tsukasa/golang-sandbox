@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from '../environments/environment';
 import { Http,Request,Response } from '@angular/http';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/map'
@@ -12,9 +13,10 @@ export class HttpcommunicationService {
   constructor(private http: Http) { }
 
   get(url: string): Observable<Response> {
+    url = environment.endpoint + url;
     let status: number = 0;
     let body: any = null;
-     return this.http.request(new Request({method: "Get",url: url}));
+    return this.http.request(new Request({method: "Get",url: url}));
   }
 
   handleError(res: Response) {
